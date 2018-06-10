@@ -2,9 +2,12 @@
   "name": "react-native-swipe-gestures",
   "version": "1.0.2",
   "description": "4-directional swipe gestures for react-native",
-  "main": "index.js",
+  "main": "dist/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "babel index.js -d dist/",
+    "flow": "yarn build && flow",
+    "prepublish": "yarn build"
   },
   "repository": {
     "type": "git",
@@ -19,5 +22,10 @@
     "url": "https://github.com/glepur/react-native-swipe-gestures/issues"
   },
   "author": "Goran Lepur <goran.lepur1@gmail.com>",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "babel-cli": "^6.26.0",
+    "babel-preset-react": "^6.24.1",
+    "flow-bin": "^0.74.0"
+  }
 }

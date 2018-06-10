@@ -1,144 +1,160 @@
-"use strict";
+// @flow
+import React from 'react'
+import { View, PanResponder } from 'react-native'
 
-import React, { Component } from "react";
-import { View, PanResponder } from "react-native";
+type PanResponderT = any
+type PanResponderGestureStateT = any
+type ReactNativeEventT = any
 
 export const swipeDirections = {
-  SWIPE_UP: "SWIPE_UP",
-  SWIPE_DOWN: "SWIPE_DOWN",
-  SWIPE_LEFT: "SWIPE_LEFT",
-  SWIPE_RIGHT: "SWIPE_RIGHT"
-};
+  SWIPE_UP: 'SWIPE_UP',
+  SWIPE_DOWN: 'SWIPE_DOWN',
+  SWIPE_LEFT: 'SWIPE_LEFT',
+  SWIPE_RIGHT: 'SWIPE_RIGHT',
+}
 
-const swipeConfig = {
+type SwipeDirectionT = $Keys<typeof swipeDirections>
+
+const defaultSwipeConfig = {
   velocityThreshold: 0.3,
   directionalOffsetThreshold: 80,
   detectSwipeUp: true,
   detectSwipeDown: true,
   detectSwipeLeft: true,
-  detectSwipeRight: true
-};
-
-function isValidSwipe(
-  velocity,
-  velocityThreshold,
-  directionalOffset,
-  directionalOffsetThreshold
-) {
-  return (
-    Math.abs(velocity) > velocityThreshold &&
-    Math.abs(directionalOffset) < directionalOffsetThreshold
-  );
+  detectSwipeRight: true,
 }
 
-class GestureRecognizer extends Component {
-  constructor(props, context) {
-    super(props, context);
-    this.swipeConfig = Object.assign(swipeConfig, props.config);
-  }
+const isValidSwipe = (velocity, velocityThreshold, directionalOffset, directionalOffsetThreshold) => (
+  (Math.abs(velocity) > velocityThreshold) &&
+  (Math.abs(directionalOffset) < directionalOffsetThreshold)
+)
 
-  componentWillReceiveProps(props) {
-    this.swipeConfig = Object.assign(swipeConfig, props.config);
+const gestureIsClick = gestureState => Math.abs(gestureState.dx) < 5 && Math.abs(gestureState.dy) < 5
+
+type ConfigT = {
+  velocityThreshold: number,
+  directionalOffsetThreshold: number,
+  detectSwipeUp: boolean,
+  detectSwipeDown: boolean,
+  detectSwipeLeft: boolean,
+  detectSwipeRight: boolean,
+}
+
+type PropsT = {
+  onSwipe?: (SwipeDirectionT, PanResponderGestureStateT) => void,
+  onSwipeUp?: (PanResponderGestureStateT) => void,
+  onSwipeDown?: (PanResponderGestureStateT) => void,
+  onSwipeLeft?: (PanResponderGestureStateT) => void,
+  onSwipeRight?: (PanResponderGestureStateT) => void,
+  config?: ConfigT,
+}
+
+export class GestureRecognizer extends React.Component<PropsT> {
+  constructor(props: PropsT) {
+    super(props)
+    this.swipeConfig = Object.assign(defaultSwipeConfig, props.config)
   }
 
   componentWillMount() {
-    const responderEnd = this._handlePanResponderEnd.bind(this);
-    const shouldSetResponder = this._handleShouldSetPanResponder.bind(this);
+    const responderEnd = this._handlePanResponderEnd.bind(this)
+    const shouldSetResponder = this._handleShouldSetPanResponder.bind(this)
     this._panResponder = PanResponder.create({
-      //stop JS beautify collapse
       onStartShouldSetPanResponder: shouldSetResponder,
       onMoveShouldSetPanResponder: shouldSetResponder,
       onPanResponderRelease: responderEnd,
-      onPanResponderTerminate: responderEnd
-    });
+      onPanResponderTerminate: responderEnd,
+    })
   }
 
-  _handleShouldSetPanResponder(evt, gestureState) {
+  componentWillReceiveProps(props: PropsT) {
+    this.swipeConfig = Object.assign(defaultSwipeConfig, props.config)
+  }
+
+  _panResponder: PanResponderT
+  swipeConfig: ConfigT
+
+  _handleShouldSetPanResponder(evt: ReactNativeEventT, gestureState: PanResponderGestureStateT) {
     return (
       evt.nativeEvent.touches.length === 1 &&
-      !this._gestureIsClick(gestureState) &&
+      !gestureIsClick(gestureState) &&
       this._validateSwipe(gestureState)
-    );
+    )
   }
 
-  _validateSwipe(gestureState) {
+  _validateSwipe(gestureState: PanResponderGestureStateT) {
     const {
       detectSwipeUp,
       detectSwipeDown,
       detectSwipeLeft,
-      detectSwipeRight
-    } = this.swipeConfig;
-    const swipeDirection = this._getSwipeDirection(gestureState);
-    const { SWIPE_LEFT, SWIPE_RIGHT, SWIPE_UP, SWIPE_DOWN } = swipeDirections;
+      detectSwipeRight,
+    } = this.swipeConfig
+    const swipeDirection = this._getSwipeDirection(gestureState)
+    const { SWIPE_LEFT, SWIPE_RIGHT, SWIPE_UP, SWIPE_DOWN } = swipeDirections
     return (
       (detectSwipeUp && swipeDirection === SWIPE_UP) ||
       (detectSwipeDown && swipeDirection === SWIPE_DOWN) ||
       (detectSwipeLeft && swipeDirection === SWIPE_LEFT) ||
       (detectSwipeRight && swipeDirection === SWIPE_RIGHT)
-    );
+    )
   }
 
-  _gestureIsClick(gestureState) {
-    return Math.abs(gestureState.dx) < 5 && Math.abs(gestureState.dy) < 5;
+  _handlePanResponderEnd(evt: ReactNativeEventT, gestureState: PanResponderGestureStateT) {
+    const swipeDirection = this._getSwipeDirection(gestureState)
+    this._triggerSwipeHandlers(swipeDirection, gestureState)
   }
 
-  _handlePanResponderEnd(evt, gestureState) {
-    const swipeDirection = this._getSwipeDirection(gestureState);
-    this._triggerSwipeHandlers(swipeDirection, gestureState);
-  }
-
-  _triggerSwipeHandlers(swipeDirection, gestureState) {
+  _triggerSwipeHandlers(swipeDirection: ?SwipeDirectionT, gestureState: PanResponderGestureStateT) {
     const {
       onSwipe,
       onSwipeUp,
       onSwipeDown,
       onSwipeLeft,
-      onSwipeRight
-    } = this.props;
-    const { SWIPE_LEFT, SWIPE_RIGHT, SWIPE_UP, SWIPE_DOWN } = swipeDirections;
-    onSwipe && onSwipe(swipeDirection, gestureState);
+      onSwipeRight,
+    } = this.props
+    const { SWIPE_LEFT, SWIPE_RIGHT, SWIPE_UP, SWIPE_DOWN } = swipeDirections
+    if (onSwipe && swipeDirection) onSwipe(swipeDirection, gestureState)
     switch (swipeDirection) {
       case SWIPE_LEFT:
-        onSwipeLeft && onSwipeLeft(gestureState);
-        break;
+        if (onSwipeLeft) onSwipeLeft(gestureState)
+        break
       case SWIPE_RIGHT:
-        onSwipeRight && onSwipeRight(gestureState);
-        break;
+        if (onSwipeRight) onSwipeRight(gestureState)
+        break
       case SWIPE_UP:
-        onSwipeUp && onSwipeUp(gestureState);
-        break;
+        if (onSwipeUp) onSwipeUp(gestureState)
+        break
       case SWIPE_DOWN:
-        onSwipeDown && onSwipeDown(gestureState);
-        break;
+        if (onSwipeDown) onSwipeDown(gestureState)
+        break
+      default:
+        break
     }
   }
 
-  _getSwipeDirection(gestureState) {
-    const { SWIPE_LEFT, SWIPE_RIGHT, SWIPE_UP, SWIPE_DOWN } = swipeDirections;
-    const { dx, dy } = gestureState;
+  _getSwipeDirection(gestureState: PanResponderGestureStateT): ?SwipeDirectionT {
+    const { SWIPE_LEFT, SWIPE_RIGHT, SWIPE_UP, SWIPE_DOWN } = swipeDirections
+    const { dx, dy } = gestureState
     if (this._isValidHorizontalSwipe(gestureState)) {
-      return dx > 0 ? SWIPE_RIGHT : SWIPE_LEFT;
+      return dx > 0 ? SWIPE_RIGHT : SWIPE_LEFT
     } else if (this._isValidVerticalSwipe(gestureState)) {
-      return dy > 0 ? SWIPE_DOWN : SWIPE_UP;
+      return dy > 0 ? SWIPE_DOWN : SWIPE_UP
     }
-    return null;
+    return null
   }
 
-  _isValidHorizontalSwipe(gestureState) {
-    const { vx, dy } = gestureState;
-    const { velocityThreshold, directionalOffsetThreshold } = this.swipeConfig;
-    return isValidSwipe(vx, velocityThreshold, dy, directionalOffsetThreshold);
+  _isValidHorizontalSwipe(gestureState: PanResponderGestureStateT) {
+    const { vx, dy } = gestureState
+    const { velocityThreshold, directionalOffsetThreshold } = this.swipeConfig
+    return isValidSwipe(vx, velocityThreshold, dy, directionalOffsetThreshold)
   }
 
-  _isValidVerticalSwipe(gestureState) {
-    const { vy, dx } = gestureState;
-    const { velocityThreshold, directionalOffsetThreshold } = this.swipeConfig;
-    return isValidSwipe(vy, velocityThreshold, dx, directionalOffsetThreshold);
+  _isValidVerticalSwipe(gestureState: PanResponderGestureStateT) {
+    const { vy, dx } = gestureState
+    const { velocityThreshold, directionalOffsetThreshold } = this.swipeConfig
+    return isValidSwipe(vy, velocityThreshold, dx, directionalOffsetThreshold)
   }
 
   render() {
-    return <View {...this.props} {...this._panResponder.panHandlers} />;
+    return <View {...this.props} {...this._panResponder.panHandlers} />
   }
 }
-
-export default GestureRecognizer;
